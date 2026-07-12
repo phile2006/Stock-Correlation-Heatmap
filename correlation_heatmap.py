@@ -33,3 +33,48 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output", default="heatmap.png", help="Ausgabedatei (PNG)")
     p.add_argument("--no-annot", action="store_true", help="Zahlenwerte in den Zellen ausblenden")
     return p.parse_args()
+
+def download_prices(args: argparse.Namespace) -> pd.DataFrame:
+    """Lädt Schlusskurse (dividenden-/splitbereinigt) für alle Ticker."""
+    kwargs = dict(interval=args.interval, auto_adjust=True, progress=False)
+    if args.start:
+        data = yf.download(args.tickers, start=args.start, end=args.end, **kwargs)
+    else:
+        data = yf.download(args.tickers, period=args.period, **kwargs)
+
+    if data.empty:
+        sys.exit("Fehler: keine Kursdaten erhalten – Ticker/Zeitraum prüfen.")
+
+    close = data["Close"]
+    if isinstance(close, pd.Series):  # nur ein Ticker
+        close = close.to_frame(args.tickers[0])
+
+    # Ticker ohne Daten aussortieren (z.B. Tippfehler im Symbol)
+    dead = [t for t in close.columns if close[t].dropna().empty]
+    if dead:
+        print(f"Warnung: keine Daten für {', '.join(dead)} – wird übersprungen.")
+        close = close.drop(columns=dead)
+    if close.shape[1] < 2:
+        sys.exit("Fehler: mindestens 2 Ticker mit Daten nötig.")
+
+    # Warnen, wenn ein Ticker deutlich später beginnt (verkürzt die gemeinsame Historie)
+    starts = {t: close[t].first_valid_index() for t in close.columns}
+    latest_start = max(starts.values())
+    common_start = min(starts.values())
+    if (latest_start - common_start).days > 30:
+        late = [t for t, s in starts.items() if s == latest_start]
+        print(f"Hinweis: {', '.join(late)} beginnt erst am "
+              f"{latest_start.date()} – gemeinsame Historie entsprechend kürzer.")
+
+    return close.dropna()
+
+def compute_correlation(close: pd.DataFrame, args: argparse.Namespace) -> tuple[pd.DataFrame, int]:
+    """Berechnet Renditen und deren Korrelationsmatrix."""
+    if args.returns == "log":
+        returns = np.log(close / close.shift(1)).dropna()
+    else:
+        returns = close.pct_change().dropna()
+    if len(returns) < 20:
+        print(f"Warnung: nur {len(returns)} gemeinsame Beobachtungen – "
+              "Korrelationen sind statistisch wenig belastbar.")
+    return returns.corr(method=args.method), len(returns)
