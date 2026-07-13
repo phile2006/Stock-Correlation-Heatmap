@@ -78,3 +78,37 @@ def compute_correlation(close: pd.DataFrame, args: argparse.Namespace) -> tuple[
         print(f"Warnung: nur {len(returns)} gemeinsame Beobachtungen – "
               "Korrelationen sind statistisch wenig belastbar.")
     return returns.corr(method=args.method), len(returns)
+
+
+
+def cluster_order(corr: pd.DataFrame) -> list[str]:
+    """Ordnet Ticker per hierarchischem Clustering, damit korrelierte
+    Blöcke in der Heatmap nebeneinander liegen."""
+    from scipy.cluster.hierarchy import leaves_list, linkage
+    from scipy.spatial.distance import squareform
+
+    dist = 1.0 - corr.values
+    np.fill_diagonal(dist, 0.0)
+    dist = (dist + dist.T) / 2  # numerische Symmetrie erzwingen
+    link = linkage(squareform(dist, checks=False), method="average")
+    return [corr.columns[i] for i in leaves_list(link)]
+
+
+
+def plot_heatmap(corr: pd.DataFrame, n_obs: int, args: argparse.Namespace) -> None:
+    """Zeichnet die Heatmap und speichert sie als PNG."""
+    n = len(corr)
+    size = max(7.0, 0.65 * n + 2.5)
+    fig, ax = plt.subplots(figsize=(size, size * 0.85))
+
+    sns.heatmap(
+        cmap="RdBu_r",          # blau = negativ, rot = positiv
+        vmin=-1.0, vmax=1.0, center=0.0,
+        annot=not args.no_annot,
+        fmt=".2f",
+        annot_kws={"size": max(6, 11 - n // 4)},
+        square=True,
+        linewidths=0.5,
+        linecolor="white",
+        cbar_kws={"label": f"Korrelation ({args.method.capitalize()})", "shrink": 0.8},
+    )
