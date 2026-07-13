@@ -102,6 +102,8 @@ def plot_heatmap(corr: pd.DataFrame, n_obs: int, args: argparse.Namespace) -> No
     fig, ax = plt.subplots(figsize=(size, size * 0.85))
 
     sns.heatmap(
+        corr,
+        ax=ax,
         cmap="RdBu_r",          # blau = negativ, rot = positiv
         vmin=-1.0, vmax=1.0, center=0.0,
         annot=not args.no_annot,
