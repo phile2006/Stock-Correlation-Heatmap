@@ -114,3 +114,27 @@ def plot_heatmap(corr: pd.DataFrame, n_obs: int, args: argparse.Namespace) -> No
         linecolor="white",
         cbar_kws={"label": f"Korrelation ({args.method.capitalize()})", "shrink": 0.8},
     )
+    
+    zeitraum = f"{args.start} bis {args.end or 'heute'}" if args.start else args.period
+    ax.set_title(
+        f"Korrelation {'Log-' if args.returns == 'log' else ''}Renditen "
+        f"({args.interval}) – Zeitraum: {zeitraum}, {n_obs} Beobachtungen",
+        fontsize=12, pad=14,
+    )
+    plt.xticks(rotation=45, ha="right")
+    plt.yticks(rotation=0)
+    fig.tight_layout()
+    fig.savefig(args.output, dpi=150)
+    print(f"Heatmap gespeichert: {args.output}")
+
+
+def print_extremes(corr: pd.DataFrame, top_n: int = 5) -> None:
+    """Gibt die am stärksten und am schwächsten korrelierten Paare aus."""
+    pairs = corr.where(np.triu(np.ones(corr.shape, dtype=bool), k=1)).stack()
+    pairs = pairs.dropna().sort_values()  # dropna: maskierte Einträge entfernen (pandas >= 3 behält NaN)
+    print(f"\nNiedrigste Korrelationen (Diversifikationskandidaten):")
+    for (a, b), v in pairs.head(top_n).items():
+        print(f"  {a:>6} / {b:<6} {v:+.2f}")
+    print(f"\nHöchste Korrelationen:")
+    for (a, b), v in pairs.tail(top_n)[::-1].items():
+        print(f"  {a:>6} / {b:<6} {v:+.2f}")
