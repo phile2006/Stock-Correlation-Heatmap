@@ -138,3 +138,24 @@ def print_extremes(corr: pd.DataFrame, top_n: int = 5) -> None:
     print(f"\nHöchste Korrelationen:")
     for (a, b), v in pairs.tail(top_n)[::-1].items():
         print(f"  {a:>6} / {b:<6} {v:+.2f}")
+
+def main() -> None:
+    args = parse_args()
+    close = download_prices(args)
+    corr, n_obs = compute_correlation(close, args)
+
+    if args.sort == "cluster" and len(corr) > 2:
+        order = cluster_order(corr)
+        corr = corr.loc[order, order]
+    elif args.sort == "alpha":
+        order = sorted(corr.columns)
+        corr = corr.loc[order, order]
+
+    print(f"{len(corr)} Ticker, {n_obs} gemeinsame Beobachtungen "
+          f"({close.index[0].date()} bis {close.index[-1].date()})")
+    print_extremes(corr)
+    plot_heatmap(corr, n_obs, args)
+
+
+if __name__ == "__main__":
+    main()
