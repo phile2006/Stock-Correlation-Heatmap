@@ -1,3 +1,18 @@
+#!/usr/bin/env python3
+"""
+Aktien-Korrelations-Heatmap
+===========================
+
+Lädt historische Kursdaten über yfinance, berechnet die Korrelationsmatrix
+der Renditen und speichert sie als Heatmap (PNG).
+
+Verwendung:
+    python correlation_heatmap.py                          # Standard-Universum, 1 Jahr
+    python correlation_heatmap.py --tickers AAPL MSFT SAP.DE --period 2y
+    python correlation_heatmap.py --start 2024-01-01 --end 2025-12-31
+    python correlation_heatmap.py --method spearman --sort cluster
+"""
+
 import argparse
 import sys
 import matplotlib
